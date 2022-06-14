@@ -61,7 +61,6 @@ export default {
   },
   methods: {
     resetLoginForm() {
-      console.log(this);
       this.$refs.loginFormRef.resetFields();
     },
     //登录操作
@@ -72,7 +71,6 @@ export default {
         console.log(res);
         if (res.meta.status !== 200) {
           console.log("登录失败");
-          console.log(this);
           return this.$message({
             showClose: true,
             message: "登陆失败,请填写正确的用户名密码",

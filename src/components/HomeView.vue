@@ -118,13 +118,16 @@ export default {
 }
 .el-main {
   background-color: #eaedf1;
+  overflow: scroll;
+  height: calc(100vh - 60px);
 }
 .home-container {
   height: 100%;
 }
 .iconfont{
   margin-right: 10px;
-}.toggle-button{
+}
+.toggle-button{
   background-color: #4a5064;
   font-size: 10px;
   line-height: 24px;

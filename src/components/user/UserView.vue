@@ -73,6 +73,7 @@
                 icon="el-icon-setting"
                 type="warning"
                 size="mini"
+                @click="setRole(scope.row)"
               ></el-button>
             </el-tooltip>
           </template>
@@ -134,8 +135,8 @@
         ref="editFormRef"
         label-width="70px"
       >
-        <el-form-item label="用户名" prop="username" >
-          <el-input v-model="editForm.username" disabled></el-input >
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="editForm.username" disabled></el-input>
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="editForm.email"></el-input>
@@ -146,7 +147,34 @@
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="editDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="editUserInfo"
+        <el-button type="primary" @click="editUserInfo">确 定</el-button>
+      </span>
+    </el-dialog>
+    <!-- 分配角色 -->
+    <el-dialog
+      title="分配角色"
+      :visible.sync="setRoleDialogVisible"
+      width="30%"
+      @close="setRoleDialogClose"
+    >
+      <p>当前用户:{{ userInfo.username }}</p>
+      <p>当前角色:{{ userInfo.role_name }}</p>
+      <p>
+        分配新角色:
+        <el-select v-model="selectedRoleId" placeholder="请选择">
+          <el-option
+            v-for="item in rolesList"
+            :key="item.id"
+            :label="item.roleName"
+            :value="item.id"
+          >
+          </el-option>
+        </el-select>
+      </p>
+
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="setRoleDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="saveRoleInfo"
           >确 定</el-button
         >
       </span>
@@ -172,6 +200,9 @@ export default {
       cb(new Error("请输入合法的手机号"));
     };
     return {
+      selectedRoleId:'',
+      rolesList: [],
+      userInfo: {},
       queryInfo: {
         query: "",
         pagenum: 1,
@@ -180,8 +211,9 @@ export default {
       userList: [],
       total: 0,
       addDialogVisible: false,
-      editDialogVisible:false,
-      deleteDialogVisible:false,
+      editDialogVisible: false,
+      deleteDialogVisible: false,
+      setRoleDialogVisible: false,
       addForm: {
         username: "",
         password: "",
@@ -206,11 +238,11 @@ export default {
           { validator: checkMobile, triggle: "blur" },
         ],
       },
-      editForm:{
-        id:'',
-        username:'',
-        email: '',
-        mobile: ''
+      editForm: {
+        id: "",
+        username: "",
+        email: "",
+        mobile: "",
       },
       editFormRules: {
         email: [
@@ -222,57 +254,91 @@ export default {
           { validator: checkMobile, triggle: "blur" },
         ],
       },
-      
     };
   },
   methods: {
+    setRoleDialogClose(){
+      this.selectedRoleId=''
+    
+    },
+    //分配用户角色信息
+    async saveRoleInfo(){
+      if(!this.selectedRoleId){
+        return this.$message.error('强选择要分配的角色!')
+      }
+      const{data:res}=await this.$http.put(`users/${this.userInfo.id}/role`,{
+        rid:this.selectedRoleId
+      })
+      console.log(res);
+      if(res.meta.status!==200){
+        return this.$message.error('分配角色失败')
+      }
+      this.$message.success('分配角色成功')
+      this.getUserList();
+      this.setRoleDialogVisible=false
+    },
+    async setRole(role) {
+      this.userInfo = role;
+      const { data: res } = await this.$http.get("roles");
+      if (res.meta.status !== 200)
+        return this.$message.error("获取角色列表失败!");
+      this.rolesList = res.data;
+      this.setRoleDialogVisible = true;
+    },
     // 根据id删除对应的用户信息
-    async deleteUserInfo(id){
-      const confirmResult=await this.$confirm('此操作将永久删除该用户, 是否继续?', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).catch(err=>err)
-      if(confirmResult=='confirm'){
-        const {data:res}=await this.$http.delete('users/'+id)
-        if(res.meta.status!==200){
-          this.$message.error('删除用户失败')
+    async deleteUserInfo(id) {
+      const confirmResult = await this.$confirm(
+        "此操作将永久删除该用户, 是否继续?",
+        "提示",
+        {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
         }
-        this.$message.success('删除用户成功')
-        this.getUserList()
+      ).catch((err) => err);
+      if (confirmResult == "confirm") {
+        const { data: res } = await this.$http.delete("users/" + id);
+        if (res.meta.status !== 200) {
+          this.$message.error("删除用户失败");
+        }
+        this.$message.success("删除用户成功");
+        this.getUserList();
       }
     },
     // 修改用户信息
-    editUserInfo(){
-      this.$refs.editFormRef.validate(async valid=>{
-        if(!valid) return this.$message.error("请检查输入内容的格式");
-        const {data:res}=await this.$http.put('users/'+this.editForm.id,{
-          email:this.editForm.email,
-          mobile:this.editForm.mobile
-        })
+    editUserInfo() {
+      this.$refs.editFormRef.validate(async (valid) => {
+        if (!valid) return this.$message.error("请检查输入内容的格式");
+        const { data: res } = await this.$http.put(
+          "users/" + this.editForm.id,
+          {
+            email: this.editForm.email,
+            mobile: this.editForm.mobile,
+          }
+        );
         console.log(res);
-        if(res.meta.status!==200){
-          return this.$message.error('更改用户信息失败！')
+        if (res.meta.status !== 200) {
+          return this.$message.error("更改用户信息失败！");
         }
-        this.editDialogVisible=false
-
-        return this.$message.success('更改用户信息成功')
-
-      })
+        this.editDialogVisible = false;
+        this.getUserList()
+        return this.$message.success("更改用户信息成功");
+       
+      });
     },
     // 修改用户表达关闭重置
-    editDilogClosed(){
-      this.$refs.editFormRef.resetFields()
+    editDilogClosed() {
+      this.$refs.editFormRef.resetFields();
     },
     async showEditDialog(id) {
-      this.editDialogVisible=true
-      this.editForm.id=id;
-      const {data:res}=await this.$http.get('users/'+id)
-      if(res.meta.status!==200){
-        return this.$message.error('查询用户信息失败')
+      this.editDialogVisible = true;
+      this.editForm.id = id;
+      const { data: res } = await this.$http.get("users/" + id);
+      if (res.meta.status !== 200) {
+        return this.$message.error("查询用户信息失败");
       }
-      this.editForm=res.data
-      this.editDialogVisible=true
+      this.editForm = res.data;
+      this.editDialogVisible = true;
     },
     addUser() {
       this.$refs.addFormRef.validate(async (valid) => {
